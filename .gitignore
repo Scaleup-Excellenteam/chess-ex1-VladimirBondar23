@@ -3,6 +3,8 @@
 /CMakeCache.txt
 /CMakeFiles/
 Chess/build/
+Chess/out
+Chess/chess.out
 /*.o
 /*.a
 /*.so

@@ -1,241 +1,277 @@
 #include "Board.h"
-#include "Pawn.h"
-#include "Knight.h"
+#include "Rook.h"
 #include "Bishop.h"
 #include "King.h"
-#include "Rook.h"
+#include "Knight.h"
 #include "Queen.h"
-#include <iostream>
-Board::Board() {
-    initializeCells();
-}
+#include "Pawn.h"
 
-// Destructor
-Board::~Board() {
-    for (Cell& cell : cells) {
-        delete cell.piece;  // Clean up dynamically allocated pieces
+
+/**
+ * @brief Constructs a Board from a string representation.
+ * @param strBoard A 64-character string representing the board from A1 to H8.
+ */
+Board::Board(const std::string& strBoard) {
+    stringToBoard(strBoard);
+}
+/**
+ * @brief Copy constructor to create a duplicate of the board.
+ * Deep-copies each piece using its pieceSharedPtr function.
+ * @param other Board to copy.
+ */
+Board::Board(const Board& other) {
+    for (const auto& pair : other._board) {
+        // Clone each piece to avoid shared ownership
+        _board[pair.first] = pair.second->pieceSharedPtr();
     }
 }
 
-// Initializes the board by placing the pieces in their initial positions
-void Board::initializeCells() {
-    char side;
 
-    for (char letter = 'a'; letter <= 'h'; letter++) {
-        if (letter == 'a' || letter == 'b') side = 'w';  // White side for columns 'a' and 'b'
-        else if (letter == 'g' || letter == 'h') side = 'b';  // Black side for columns 'g' and 'h'
+/**
+ * @brief Parses a 64-character string into the internal board structure.
+ * Uppercase = white, lowercase = black.
+ * @param strBoard A linear 8x8 representation of the board state.
+ */
+void Board::stringToBoard(const std::string& strBoard) {
+    if (strBoard.size() != BOARD_SIZE) {
+        throw std::runtime_error("ERROR: str board size is not 64");
+    }
+    int index = 0;
+    for (char c = FIRST_ROW; c <= LAST_ROW; c++) {
+        for (int i = FIRST_COL; i <= LAST_COL; ++i) {
+            Box location = { c,i };
+            switch (strBoard[index]) {
+            case 'R':_board[location] = std::make_shared<Rook>(location, WHITE);break;
+            case 'r':_board[location] = std::make_shared<Rook>(location, BLACK);break;
+            case 'N':_board[location] = std::make_shared<Knight>(location, WHITE);break;
+            case 'n':_board[location] = std::make_shared<Knight>(location, BLACK);break;
+            case 'Q':_board[location] = std::make_shared<Queen>(location, WHITE);break;
+            case 'q':_board[location] = std::make_shared<Queen>(location, BLACK);break;
+            case 'K':_board[location] = std::make_shared<King>(location, WHITE);break;
+            case 'k':_board[location] = std::make_shared<King>(location, BLACK);break;
+            case 'B':_board[location] = std::make_shared<Bishop>(location, WHITE);break;
+            case 'b':_board[location] = std::make_shared<Bishop>(location, BLACK);break;
+            case 'P':_board[location] = std::make_shared<Pawn>(location, WHITE);break;
+            case 'p':_board[location] = std::make_shared<Pawn>(location, BLACK);break;
+            case '#':break;
+            default:throw std::runtime_error("ERROR: error in str board");
+            }
+            index++;
+        }
+    }
+}
 
-        for (int number = 1; number <= 8; number++) {
-            Piece* p = createPiece(letter, number, side);
-            cells.push_back(Cell(letter, number, p));
+/**
+ * @brief Returns the piece at a given box.
+ * @param box The location to access.
+ * @return A shared pointer to the piece.
+ * @throws EmptyPiece if the box is empty.
+ */
+const std::shared_ptr<Piece>& Board::getPiece(const Box& box) const {
+    try {
+        return _board.at(box);
+    }
+    catch (const std::out_of_range& e) {
+        throw EmptyPiece("No piece in that box");
 
-            // Optional: Print for debugging
-            if (p != nullptr) {
-                std::cout << cells.back().letter << cells.back().number
-                    << p->side << p->identifier << '\n';
+    }
+}
+/**
+ * @brief Checks if a given piece is of the same color.
+ * @param box The box to check.
+ * @param color The color to compare against.
+ * @return True if same color, false otherwise.
+ */
+bool Board::isSameColor(const Box& box, COLOR color) const {
+    try {
+        return getPiece(box)->getColor() == color;
+    }
+    catch (EmptyPiece& e) {
+        throw e;
+    }
+}
+/**
+ * @brief Checks if a given box is occupied.
+ * @param box The box to check.
+ * @return True if a piece exists at the box.
+ */
+bool Board::isOccupied(const Box& box) const {
+    return _board.find(box) != _board.end();
+}
+/**
+ * @brief Adds a piece to the board.
+ * @param piece Shared pointer to the piece to add.
+ */
+void Board::addPiece(const std::shared_ptr<Piece>& piece) {
+    _board[piece->getLocation()] = piece;
+}
+/**
+ * @brief Removes a piece from the board if present.
+ * @param box The location to remove from.
+ */
+void Board::removePiece(const Box& box) {
+    if (isOccupied(box)) {
+        _board.erase(box);
+    }
+}
+/**
+ * @brief Returns the location of the king for a given color.
+ * @param color The kingâ€™s color.
+ * @return The box containing the king.
+ */
+Box Board::getKingLocation(COLOR color) const {
+    for (const auto& [box, piece] : _board) {
+        if (piece->getType() == KING && piece->getColor() == color) {
+            return piece->getLocation();
+        }
+    }
+    return { 'x',-1 };
+}
+
+/**
+ * @brief Returns all potential moves (after legality filtering) for a color.
+ * @param color Color of pieces to scan.
+ * @return Set of all valid _destination boxes.
+ */
+std::set<Box> Board::getPiecesPotenMoves(COLOR color)const {
+    std::set<Box> result;
+    for (const auto& [box, piece] : _board) {
+        if (_board.at(box)->getColor() == color) {
+            auto piecePotenMoves = _board.at(box)->getPotentialMoves();
+            result.insert(piecePotenMoves.begin(), piecePotenMoves.end());
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief Returns all raw (unfiltered) moves for all pieces of a color.
+ * @param color Color of pieces.
+ * @return Set of _destination boxes.
+ */
+std::set<Box> Board::getPiecesRawMoves(COLOR color) const {
+    std::set<Box> result;
+    for (const auto& [box, piece] : _board) {
+        if (_board.at(box)->getColor() == color) {
+            auto piecePotenMoves = _board.at(box)->getRawMoves(*this);
+            result.insert(piecePotenMoves.begin(), piecePotenMoves.end());
+        }
+    }
+    return result;
+}
+/**
+ * @brief Checks whether a color is in check.
+ * @param color The color to check.
+ * @return True if the king is attacked.
+ */
+bool Board::isCheck(COLOR color) const {
+    return getPiecesPotenMoves(colorNot(color)).contains(getKingLocation(color));
+}
+/**
+ * @brief Checks whether a color is in mate.
+ * @param color The color to check.
+ * @return True if the player is in mate.
+ */
+bool Board::isMate(COLOR color) const {
+    return isCheck(color) && getPiecesPotenMoves(color).empty();
+}
+
+/**
+ * @brief Moves a piece to a _destination, updates internal state.
+ *
+ * Does not check for move legality.
+ * @param destination The box to move to.
+ * @param piece The piece to move.
+ * @return True if move succeeded.
+ */
+void Board::pieceMove(const Box& destination, const std::shared_ptr<Piece>& piece) {
+    Box currentLocation = piece->getLocation();
+    piece->setLocation(destination);
+    piece->moved();
+    addPiece(piece);
+    removePiece(currentLocation);
+}
+
+/**
+ * @brief Makes a move for a given piece to the specified destination.
+ * This function moves the specified piece to the given destination. If the piece is a pawn
+ * and is eligible for promotion, it will prompt the user for the promotion choice. The pawn
+ * is then promoted to the selected piece (Queen, Rook, Bishop, or Knight). The new piece is
+ * added to the board after promotion.
+ * If the promotion input is invalid, an exception is caught and an error message is printed.
+ * @param destination The destination Box (coordinate) for the move.
+ * @param piece The piece to be moved.
+ */
+void Board::makeMove(const Box& destination, const std::shared_ptr<Piece>& piece) {
+    auto pieceToMove = piece;
+    if (piece->getType() == PAWN) {
+        auto pawn = std::dynamic_pointer_cast<Pawn>(piece);
+        if (pawn->canPromote() && pawn) {
+            try {
+                pawn->userPromotionChoice(pawn->getLocation());
+                pieceToMove = pawn->getPromotedPiece();
+                addPiece(pieceToMove);
+            }
+            catch (WrongPromotionInput& e) {
+                std::cerr << e.what();
             }
         }
     }
+    pieceMove(destination, pieceToMove);
 }
 
-bool Board::updateBoard(int num1, char let1, int num2, char let2, char side)
-{
-    // Find the start and end cell in the board
-    Cell* startCell = nullptr;
-    Cell* endCell = nullptr;
-
-    for (Cell& cell : cells) {
-        if (cell.letter == let1 && cell.number == num1) {
-            startCell = &cell;
-        }
-        if (cell.letter == let2 && cell.number == num2) {
-            endCell = &cell;
-        }
+/**
+ * @brief Updates potential moves for all pieces on the board.
+ * Protects kings by marking enemy threats first, then computing moves.
+ * @param color The active player's color.
+ */
+void Board::updatePotenMoves(COLOR color) {
+    for (const auto& [box, piece] : _board) {
+        piece->setIsProtected(true);
     }
-    auto startCellPiece =  startCell->piece;
-    auto endCellPiece =  endCell->piece;
-    endCell->piece = startCell->piece;  // Move the piece to the end cell
-    startCell->piece = nullptr;         // Remove the piece from the start cell
-    if (isKingInCheck(side)) {
-        endCell->piece = endCellPiece;
-        startCell->piece = startCellPiece;
-        return false;
-    }
-    return true;
-
-}
-
-
-
-// Helper function to create a piece based on the position
-Piece* Board::createPiece(char letter, int number, char side) {
-    Piece* p = nullptr;
-
-    
-        switch (letter) {
-        case 'a': case 'h':
-            if (number == 1 || number == 8)
-                p = new Rook(side);
-            else if (number == 2 || number == 7)
-                p = new Knight(side);
-            else if (number == 3 || number == 6)
-                p = new Bishop(side);
-            else if (number == 4)
-                p = new Queen(side);
-            else if (number == 5)
-                p = new King(side);
-            break;
-        case 'b': case 'g':
-            p = new Pawn(side);  // Pawns for columns 'b' and 'g'
-            break;
-        default:
-            p = nullptr;  // Empty cells
-            break;
-        }
-    
-    return p;
-}
-
-
-
-
-// Validate if a move is valid for a given piece
-int Board::isMoveValid(Cell start, Cell end, char actionSide) {
-    if (start.piece == nullptr) 
-        return 11;  
-    if (start.piece->side != actionSide)
-        return 12;
-    if (end.piece != nullptr) {
-        if (start.piece->side == end.piece->side)
-            return 13;
-    }
-
-    Piece* piece = start.piece;
-
-    switch (piece->identifier) {
-    case 'p': // Pawn movement
-        return isPawnMoveValid(start, end)? 42 : 21;
-    case 'r': // Rook movement
-        return isRookMoveValid(start, end)? 42 : 21;
-    case 'n': // Knight movement
-        return isKnightMoveValid(start, end)? 42 : 21;
-    case 'b': // Bishop movement
-        return isBishopMoveValid(start, end)? 42 : 21;
-    case 'q': // Queen movement
-        return isQueenMoveValid(start, end)? 42 : 21;
-    case 'k': // King movement
-        return isKingMoveValid(start, end)? 42 : 21;
-    default:
-        return 21;
-    }
-}
-
-// Validate pawn movement
-bool Board::isPawnMoveValid(Cell start, Cell end) {
-    int direction = (start.piece->side == 'w') ? 1 : -1;  // White moves up, black moves down
-    if (start.number == end.number && end.letter == start.letter + direction) {
-        return end.piece == nullptr;  // Pawns move one step forward if the square is empty
-    }
-    if (start.number == end.number && end.letter == start.letter + 2 * direction && (start.letter == 'g' || start.letter == 'b')) {
-        return end.piece == nullptr;  // First move of the pawn can move two squares forward if no obstruction
-    }
-    if (abs(start.number - end.number) == 1 && end.letter == start.letter + direction) {
-        return end.piece != nullptr && end.piece->side != start.piece->side;  // Pawn captures diagonally
-    }
-    return false;
-}
-
-bool Board::isKingInCheck(char side) {
-    Cell kingCell;
-
-    // 1. Locate the King
-    for (const Cell& cell : cells) {
-        if (cell.piece != nullptr && cell.piece->identifier == 'k' && cell.piece->side == side) {
-            kingCell = cell;
-            break;
+    for (const auto& [box, piece] : _board) {
+        if (piece->getColor() != color) {
+            piece->updatePotentialMove(*this);
         }
     }
-
-    // 2. Check if any enemy piece can move to the King’s position
-    for (const Cell& cell : cells) {
-        if (cell.piece != nullptr && cell.piece->side != side) {
-            int result = isMoveValid(cell, kingCell, cell.piece->side);
-            if (result == 42) { // 42 means valid move (legal)
-                return true; // King is in check
-            }
+    for (const auto& [box, piece] : _board) {
+        if (piece->getColor() == color) {
+            piece->updatePotentialMove(*this);
         }
     }
-
-    return false; // King is safe
 }
-
-
-
-
-// Validate rook movement
-bool Board::isRookMoveValid(Cell start, Cell end) {
-    if (start.letter != end.letter && start.number != end.number) {
-        return false;  // Rook must move in a straight line
-    }
-    return !isPathBlocked(start, end);  // Check if the path is blocked by another piece
-}
-
-// Validate knight movement
-bool Board::isKnightMoveValid(Cell start, Cell end) {
-    int dx = abs(start.number - end.number);
-    int dy = abs(start.letter - end.letter);
-    return (dx == 2 && dy == 1) || (dx == 1 && dy == 2);  // Knight moves in an L shape
-}
-
-// Validate bishop movement
-bool Board::isBishopMoveValid(Cell start, Cell end) {
-    if (abs(start.letter - end.letter) != abs(start.number - end.number)) {
-        return false;  // Bishop must move diagonally
-    }
-    return !isPathBlocked(start, end);  // Check if the path is blocked by another piece
-}
-
-// Validate queen movement (combination of rook and bishop)
-bool Board::isQueenMoveValid(Cell start, Cell end) {
-    return isRookMoveValid(start, end) || isBishopMoveValid(start, end);  // Queen combines rook and bishop moves
-}
-
-// Validate king movement
-bool Board::isKingMoveValid(Cell start, Cell end) {
-    int dx = abs(start.number - end.number);
-    int dy = abs(start.letter - end.letter);
-    return dx <= 1 && dy <= 1;  // King can move one square in any direction
-}
-
-// Check if the path is blocked (needed for rooks, bishops, queens)
-bool Board::isPathBlocked(Cell start, Cell end) {
-    int dx = end.letter - start.letter;
-    int dy = end.number - start.number;
-
-    int xDir = (dx == 0) ? 0 : (dx > 0) ? 1 : -1;
-    int yDir = (dy == 0) ? 0 : (dy > 0) ? 1 : -1;
-
-    int x = start.letter + xDir;
-    int y = start.number + yDir;
-
-    while (x != end.letter || y != end.number) {
-        if (getCell(x, y).piece != nullptr) {
-            return true;  // There's a piece blocking the path
+/**
+ * @brief Retrieves all legal moves for the given color.
+ * Iterates through all pieces on the board of the specified color and collects
+ * their potential moves into a vector of Move objects. Each move includes
+ * a source, destination, and default score (set to 0).
+ * @param color The color of the pieces to generate legal moves for (WHITE or BLACK).
+ * @return A vector containing all legal moves for the given color.
+ */
+std::vector<Move> Board::getALLLegalMoves(COLOR color)const {
+    std::vector<Move> result;
+    for (const auto& [box, piece] : _board) {
+        if (piece->getColor() != color) {
+            continue;
         }
-        x += xDir;
-        y += yDir;
-    }
-    return false;
-}
-
-// Get a cell by its coordinates
-Cell Board::getCell(char letter, int number) const {
-    for (const Cell& cell : cells) {
-        if (cell.letter == letter && cell.number == number) {
-            return cell;
+        for (auto destination : piece->getPotentialMoves()) {
+            Move move = { box,destination,0 };
+            result.push_back(move);
         }
     }
-    return Cell(0,0,nullptr);  // Return an empty cell if not found (shouldn't happen if the board is valid)
+    return result;
+}
+/**
+ * @brief Retrieves a piece from a specific board coordinate.
+ * Used primarily in algorithms to safely access a piece. If no piece exists
+ * @param box The location on the board to check.
+ * @return A const reference to a shared pointer of the piece, or null if none exists.
+ */
+const std::shared_ptr<Piece>& Board::algoGetPiece(const Box& box) const {
+    static const std::shared_ptr<Piece> nullPiece = nullptr;
+    auto it = _board.find(box);
+    if (it == _board.end()) return nullPiece;
+    return it->second;
 }
 
 
