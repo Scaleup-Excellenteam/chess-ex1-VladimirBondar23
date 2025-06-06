@@ -6,7 +6,6 @@
 #include "Queen.h"
 #include "Pawn.h"
 
-
 /**
  * @brief Constructs a Board from a string representation.
  * @param strBoard A 64-character string representing the board from A1 to H8.
@@ -25,13 +24,35 @@ Board::Board(const Board& other) {
         _board[pair.first] = pair.second->pieceSharedPtr();
     }
 }
-
-
 /**
  * @brief Parses a 64-character string into the internal board structure.
  * Uppercase = white, lowercase = black.
  * @param strBoard A linear 8x8 representation of the board state.
  */
+
+int Board::evaluate(COLOR maximizing) const {
+    int score = 0;
+    for (const auto& [box, piece] : _board) {
+        int value = 0;
+        switch(piece->getType()) {
+            case PAWN:   value = 100; break;
+            case KNIGHT: value = 320; break;
+            case BISHOP: value = 330; break;
+            case ROOK:   value = 500; break;
+            case QUEEN:  value = 900; break;
+            case KING:   value = 20000; break;
+            default: value = 0; break;
+        }
+        if (piece->getColor() == maximizing) {
+            score += value;
+        } else {
+            score -= value;
+        }
+    }
+    return score;
+}
+
+
 void Board::stringToBoard(const std::string& strBoard) {
     if (strBoard.size() != BOARD_SIZE) {
         throw std::runtime_error("ERROR: str board size is not 64");
@@ -41,20 +62,20 @@ void Board::stringToBoard(const std::string& strBoard) {
         for (int i = FIRST_COL; i <= LAST_COL; ++i) {
             Box location = { c,i };
             switch (strBoard[index]) {
-            case 'R':_board[location] = std::make_shared<Rook>(location, WHITE);break;
-            case 'r':_board[location] = std::make_shared<Rook>(location, BLACK);break;
-            case 'N':_board[location] = std::make_shared<Knight>(location, WHITE);break;
-            case 'n':_board[location] = std::make_shared<Knight>(location, BLACK);break;
-            case 'Q':_board[location] = std::make_shared<Queen>(location, WHITE);break;
-            case 'q':_board[location] = std::make_shared<Queen>(location, BLACK);break;
-            case 'K':_board[location] = std::make_shared<King>(location, WHITE);break;
-            case 'k':_board[location] = std::make_shared<King>(location, BLACK);break;
-            case 'B':_board[location] = std::make_shared<Bishop>(location, WHITE);break;
-            case 'b':_board[location] = std::make_shared<Bishop>(location, BLACK);break;
-            case 'P':_board[location] = std::make_shared<Pawn>(location, WHITE);break;
-            case 'p':_board[location] = std::make_shared<Pawn>(location, BLACK);break;
-            case '#':break;
-            default:throw std::runtime_error("ERROR: error in str board");
+                case 'R':_board[location] = std::make_shared<Rook>(location,WHITE);break;
+                case 'r':_board[location] = std::make_shared<Rook>(location,BLACK);break;
+                case 'N':_board[location] = std::make_shared<Knight>(location,WHITE);break;
+                case 'n':_board[location] = std::make_shared<Knight>(location,BLACK);break;
+                case 'Q':_board[location] = std::make_shared<Queen>(location,WHITE);break;
+                case 'q':_board[location] = std::make_shared<Queen>(location,BLACK);break;
+                case 'K':_board[location] = std::make_shared<King>(location,WHITE);break;
+                case 'k':_board[location] = std::make_shared<King>(location,BLACK);break;
+                case 'B':_board[location] = std::make_shared<Bishop>(location,WHITE);break;
+                case 'b':_board[location] = std::make_shared<Bishop>(location,BLACK);break;
+                case 'P':_board[location] = std::make_shared<Pawn>(location,WHITE);break;
+                case 'p':_board[location] = std::make_shared<Pawn>(location,BLACK);break;
+                case '#':break;
+                default:throw std::runtime_error("ERROR: error in str board");
             }
             index++;
         }
@@ -127,7 +148,6 @@ Box Board::getKingLocation(COLOR color) const {
     }
     return { 'x',-1 };
 }
-
 /**
  * @brief Returns all potential moves (after legality filtering) for a color.
  * @param color Color of pieces to scan.
@@ -272,6 +292,16 @@ const std::shared_ptr<Piece>& Board::algoGetPiece(const Box& box) const {
     auto it = _board.find(box);
     if (it == _board.end()) return nullPiece;
     return it->second;
+}
+
+std::vector<std::shared_ptr<Piece>> Board::getPieces(COLOR color) {
+     std::vector<std::shared_ptr<Piece>> result;
+     for (auto& [box, piece] : _board){
+         if ( piece->getColor() == color){
+             result.push_back(piece);
+         }
+     }
+    return result;
 }
 
 

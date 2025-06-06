@@ -2,6 +2,7 @@
 #include "Piece.h"
 #include <map>
 #include <memory>
+
 /**
 * @brief Represents a chess board and its operations.
 *
@@ -10,7 +11,6 @@
 */
 class Board {
 public:
-
     /**
      * @brief Constructs a Board from a string representation.
      *
@@ -23,6 +23,9 @@ public:
     Board& operator=(const Board&) = default;
     ~Board() = default;
 
+    int evaluate(COLOR maximizing) const;
+    std::vector<std::shared_ptr<Piece>> getPieces(COLOR);
+
     /**
      * @brief Adds a piece to the board at its location.
      * @param piece Shared pointer to the piece to add.
@@ -32,7 +35,6 @@ public:
     * @brief Removes a piece from the specified location.
     * @param location Board coordinate to remove from.
     */
-
     void removePiece(const Box&);
     /**
      * @brief Returns the location of the king for a given color.
@@ -133,13 +135,6 @@ public:
      */
     [[nodiscard]] bool isMate(COLOR) const;
 
-    // This functions for further implementation
-    //    bool isDraw()const;
-    //    bool isThreeFoldDraw()const;
-    //    bool isStalemate()const;
-
-
-
 private:
     std::map<Box, std::shared_ptr<Piece>> _board;
 
@@ -150,4 +145,3 @@ private:
     */
     void stringToBoard(const std::string& board);
 };
-

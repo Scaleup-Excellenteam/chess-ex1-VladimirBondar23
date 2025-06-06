@@ -3,6 +3,7 @@
 #include <set>
 #include <vector>
 #include <memory>
+#include <algorithm>
 #include "MyExceptions.h"
 
 
@@ -23,6 +24,7 @@ public:
      */
     Piece(Box, TYPE, COLOR);
 
+	std::vector<Move> getMoves();
 
     // getters & setters
     [[nodiscard]] const Box& getLocation() const;
@@ -93,5 +95,3 @@ private:
     bool _hasMoved;                ///< Whether the piece has moved
     bool _isProtected;             ///< Whether the piece is protected by another from eating
 };
-
-
