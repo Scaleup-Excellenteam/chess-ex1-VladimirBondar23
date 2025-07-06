@@ -9,7 +9,7 @@
  * The Rook moves in straight lines: vertically or horizontally any number of squares.
  */
 
-class Rook : public Piece {
+class Rook : public Piece{
 public:
     /**
     * @brief Constructs a Rook at the given position with the specified color.

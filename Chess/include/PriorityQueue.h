@@ -1,6 +1,7 @@
 #pragma once
 #include <list>
 #include <iostream>
+#include <mutex>
 
 template <typename T>
 struct MyComparator {
@@ -22,6 +23,10 @@ struct MyComparator {
 template <typename T>
 class PriorityQueue {
 public:
+    PriorityQueue() = default;
+    PriorityQueue& operator=(PriorityQueue&& other) noexcept;
+    PriorityQueue(PriorityQueue&& other) noexcept;
+
     /**
      * @brief Inserts an element into the priority queue in sorted order.
      * If the size exceeds 5, the least relevant (first) item is discarded.
@@ -45,16 +50,16 @@ public:
     void print();
 
 private:
+    mutable std::mutex _mutex;
     std::list<T> _queue;
     MyComparator<T> _comparator;
 };
 
 template<typename T>
 void PriorityQueue<T>::print() {
-
+    std::lock_guard<std::mutex> lock(_mutex);
     int cnt = 1;
     auto it = _queue.end();
-    // Skip the first (size - 3) elements
     while (it-- != _queue.begin()) {
         std::cout << cnt << ". Recommended move: " << *it << std::endl;
         cnt++;
@@ -65,19 +70,23 @@ void PriorityQueue<T>::print() {
 }
 
 template<typename T>
-PriorityQueue<T>& PriorityQueue<T>::operator=(const PriorityQueue<T>& other) {
+PriorityQueue<T> &PriorityQueue<T>::operator=(const PriorityQueue<T>& other) {
+    if (this == &other) return *this;
+    std::lock_guard<std::mutex> lock_this(_mutex);
+    std::lock_guard<std::mutex> lock_other(other._mutex);
     _queue = other._queue;
     return *this;
 }
 
 template<typename T>
 void PriorityQueue<T>::push(const T& t) {
-    for (auto it = _queue.begin(); it != _queue.end(); it++) {
-        if (_comparator(t, *it) < 0) {
-            _queue.insert(it, t);
-            if (_queue.size() > 5) {
-                _queue.pop_front();
-            }
+    std::lock_guard<std::mutex> lock(_mutex);
+    for (auto it = _queue.begin(); it != _queue.end(); it++){
+        if (_comparator(t, *it) < 0){
+           _queue.insert(it, t);
+           if ( _queue.size() > 5){
+               _queue.pop_front();
+           }
             return;
         }
     }
@@ -88,7 +97,24 @@ void PriorityQueue<T>::push(const T& t) {
 }
 
 template<typename T>
+PriorityQueue<T> &PriorityQueue<T>::operator=(PriorityQueue &&other) noexcept {
+    if (this != &other) {
+        std::lock_guard<std::mutex> lock_this(_mutex);
+        std::lock_guard<std::mutex> lock_other(other._mutex);
+        _queue = std::move(other._queue);
+    }
+    return *this;
+}
+
+template<typename T>
+PriorityQueue<T>::PriorityQueue(PriorityQueue &&other) noexcept {
+    std::lock_guard<std::mutex> lock(other._mutex);
+    _queue = std::move(other._queue);
+}
+
+template<typename T>
 T PriorityQueue<T>::pull() {
+    std::lock_guard<std::mutex> lock(_mutex);
     T back = _queue.back();
     _queue.pop_back();
     return back;

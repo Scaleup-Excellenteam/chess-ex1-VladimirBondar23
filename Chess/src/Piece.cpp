@@ -1,6 +1,4 @@
 #include "Piece.h"
-#include <algorithm>
-
 #include <utility>
 #include "Board.h"
 
@@ -10,8 +8,7 @@
  * @param type Type of the piece (e.g., KING, PAWN).
  * @param color Color of the piece (WHITE or BLACK).
  */
-Piece::Piece(Box  init, TYPE type, COLOR color) : _location(std::move(init)), _type(type), _color(color)
-, _hasMoved(false), _isProtected(false) {}
+Piece::Piece(Box  init, TYPE type, COLOR color) : _location(std::move(init)), _type(type), _color(color), _hasMoved(false), _isProtected(false) {}
 
 
 const Box& Piece::getLocation() const {
@@ -122,11 +119,19 @@ std::vector<Box> Piece::removeOwnCheck(const Board& board) {
  */
 bool Piece::ownCheck(const Box& destination, const Board& board) const {
     Board currentBoard(board);
-
     currentBoard.pieceMove(destination, pieceSharedPtr());
     std::set<Box> opponentMoves = currentBoard.getPiecesRawMoves(colorNot(getColor()));
     Box kingLocation = currentBoard.getKingLocation(getColor());
 
     return opponentMoves.find(kingLocation) != opponentMoves.end();
 
+}
+
+std::vector<Move> Piece::getMoves() {
+    std::vector<Move> movesList;                     
+    for (auto targetSquare : getPotentialMoves()) {  
+        Move candidateMove = {getLocation(), targetSquare, 0};  
+        movesList.push_back(candidateMove);
+    }
+    return movesList;
 }

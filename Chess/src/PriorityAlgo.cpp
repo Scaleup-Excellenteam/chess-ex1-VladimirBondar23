@@ -195,12 +195,13 @@ int miniMax(int depth, Move move, Board& board, COLOR maximizing, COLOR currentC
  * @param destPiece The original piece at destination, if any.
  */
 void undoMove(Move move, Board& board, const std::shared_ptr<Piece>& sourcePiece, const std::shared_ptr<Piece>& destPiece) {
-    board.addPiece(sourcePiece);
-    board.removePiece(move._destination);
+    board.removePiece(move._destination); 
     if (destPiece) {
-        board.addPiece(destPiece);
+        board.addPiece(destPiece);       
     }
+    board.addPiece(sourcePiece);          
 }
+
 /**
  * @brief Checks if a box is in the center 4x4 area of the board.
  * @param box The coordinate to evaluate.
